@@ -1,6 +1,5 @@
 #include "Event.cuh"
 #include "allocate.h"
-#include <alpaka/alpaka.hpp>
 
 struct SDL::modules* SDL::modulesInGPU = nullptr;
 struct SDL::pixelMap* SDL::pixelMapping = nullptr;
@@ -600,6 +599,7 @@ __device__ int binary_search(
     return -1;
 }
 
+#ifdef __CUDACC__
 class moduleRangesKernel
 {
 public:
@@ -640,6 +640,7 @@ public:
         }
     }
 };
+#endif
 
 
 __global__ void hitLoopKernel(
@@ -737,23 +738,7 @@ void SDL::Event::addHitToEvent(std::vector<float> x, std::vector<float> y, std::
     //std::cout << cudaGetLastError() << std::endl;
     cudaStreamSynchronize(stream);
 
-    // Define the index domain
-    using Dim = alpaka::dim::DimInt<1u>;
-    using Idx = std::size_t;
-    using Acc = alpaka::acc::AccGpuCudaRt<Dim, Idx>;
-
-    // Blocking isn't needed after second kernel call. Saves ~100 us.
-    // This is because addPixelSegmentToEvent (which is run next) doesn't rely on hitsinGPU->hitrange variables.
-    // Also, modulesInGPU->partnerModuleIndices is not alterned in addPixelSegmentToEvent.
-    using QueueProperty = alpaka::queue::NonBlocking;
-    using QueueAcc = alpaka::queue::Queue<Acc, QueueProperty>;
-
-    // Select a device
-    auto const devAcc = alpaka::pltf::getDevByIdx<Acc>(0u);
-
-    // Create a queue on the device
-    QueueAcc queue(devAcc);
-
+#ifdef __CUDACC__
     // Define the work division
     Idx const elementsPerThread(3u);
     Idx const numElements(nLowerModules);
@@ -781,6 +766,7 @@ void SDL::Event::addHitToEvent(std::vector<float> x, std::vector<float> y, std::
 
     // Enqueue the kernel execution task
     alpaka::queue::enqueue(queue, taskKernel);
+#endif
 }
 
 __global__ void addPixelSegmentToEventKernel(unsigned int* hitIndices0,unsigned int* hitIndices1,unsigned int* hitIndices2,unsigned int* hitIndices3, float* dPhiChange, float* ptIn, float* ptErr, float* px, float* py, float* pz, float* eta, float* etaErr,float* phi, int* charge, uint16_t pixelModuleIndex, struct SDL::modules& modulesInGPU, struct SDL::objectRanges& rangesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU,const int size, int* superbin, int8_t* pixelType, short* isQuad)
