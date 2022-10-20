@@ -27,6 +27,14 @@
 #include "Kernels.cuh"
 #include "Constants.h"
 
+#include <alpaka/alpaka.hpp>
+using Dim = alpaka::dim::DimInt<1u>;
+using Idx = std::size_t;
+using Acc = alpaka::acc::AccGpuCudaRt<Dim, Idx>;
+using DevAcc = alpaka::dev::Dev<Acc>;
+using QueueProperty = alpaka::queue::NonBlocking;
+using QueueAcc = alpaka::queue::Queue<Acc, QueueProperty>;
+
 #include "cuda_profiler_api.h"
 #ifdef __CUDACC__
 #define CUDA_G __global__
@@ -39,6 +47,8 @@ namespace SDL
     {
     private:
         cudaStream_t stream;
+        DevAcc devAcc;
+        QueueAcc queue;
         std::array<unsigned int, 6> n_hits_by_layer_barrel_;
         std::array<unsigned int, 5> n_hits_by_layer_endcap_;
         std::array<unsigned int, 6> n_minidoublets_by_layer_barrel_;
@@ -83,7 +93,7 @@ namespace SDL
         int* superbinCPU;
         int8_t* pixelTypeCPU;
     public:
-        Event(cudaStream_t estream);
+        Event(cudaStream_t estream, QueueAcc& equeue);
         ~Event();
         void resetEvent();
 

@@ -381,12 +381,15 @@ void run_sdl()
     }
 
 
+    DevAcc const devAcc = alpaka::pltf::getDevByIdx<Acc>(0u);
+    QueueAcc queue(devAcc);
+
     cudaStream_t streams[ana.streams];
     std::vector<SDL::Event*> events;
     for( int s =0; s<ana.streams; s++){
     
     cudaStreamCreateWithFlags(&streams[s],cudaStreamNonBlocking);
-    SDL::Event* event = new SDL::Event(streams[s]);;//(streams[omp_get_thread_num()]);
+    SDL::Event* event = new SDL::Event(streams[s],queue);;//(streams[omp_get_thread_num()]);
     events.push_back(event);
     }
     //events.push_back(event1);

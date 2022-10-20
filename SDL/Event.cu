@@ -1,13 +1,12 @@
 #include "Event.cuh"
 #include "allocate.h"
-#include <alpaka/alpaka.hpp>
 
 struct SDL::modules* SDL::modulesInGPU = nullptr;
 struct SDL::pixelMap* SDL::pixelMapping = nullptr;
 uint16_t SDL::nModules;
 uint16_t SDL::nLowerModules;
 
-SDL::Event::Event(cudaStream_t estream)
+SDL::Event::Event(cudaStream_t estream, QueueAcc& equeue)
 {
     int version;
     int driver;
@@ -15,6 +14,8 @@ SDL::Event::Event(cudaStream_t estream)
     cudaDriverGetVersion(&driver);
     //printf("version: %d Driver %d\n",version, driver);
     stream = estream;
+    queue = equeue;
+    devAcc = alpaka::dev::getDev(queue);
     hitsInGPU = nullptr;
     mdsInGPU = nullptr;
     segmentsInGPU = nullptr;
@@ -736,23 +737,6 @@ void SDL::Event::addHitToEvent(std::vector<float> x, std::vector<float> y, std::
                                             hitsInGPU);
     //std::cout << cudaGetLastError() << std::endl;
     cudaStreamSynchronize(stream);
-
-    // Define the index domain
-    using Dim = alpaka::dim::DimInt<1u>;
-    using Idx = std::size_t;
-    using Acc = alpaka::acc::AccGpuCudaRt<Dim, Idx>;
-
-    // Blocking isn't needed after second kernel call. Saves ~100 us.
-    // This is because addPixelSegmentToEvent (which is run next) doesn't rely on hitsinGPU->hitrange variables.
-    // Also, modulesInGPU->partnerModuleIndices is not alterned in addPixelSegmentToEvent.
-    using QueueProperty = alpaka::queue::NonBlocking;
-    using QueueAcc = alpaka::queue::Queue<Acc, QueueProperty>;
-
-    // Select a device
-    auto const devAcc = alpaka::pltf::getDevByIdx<Acc>(0u);
-
-    // Create a queue on the device
-    QueueAcc queue(devAcc);
 
     // Define the work division
     Idx const elementsPerThread(3u);
