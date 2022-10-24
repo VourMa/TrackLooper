@@ -6,7 +6,8 @@ struct SDL::pixelMap* SDL::pixelMapping = nullptr;
 uint16_t SDL::nModules;
 uint16_t SDL::nLowerModules;
 
-SDL::Event::Event(cudaStream_t estream, QueueAcc& equeue)
+SDL::Event::Event(cudaStream_t estream, QueueAcc equeue)
+  : queue{std::move(equeue)}
 {
     int version;
     int driver;
@@ -14,8 +15,6 @@ SDL::Event::Event(cudaStream_t estream, QueueAcc& equeue)
     cudaDriverGetVersion(&driver);
     //printf("version: %d Driver %d\n",version, driver);
     stream = estream;
-    queue = equeue;
-    devAcc = alpaka::dev::getDev(queue);
     hitsInGPU = nullptr;
     mdsInGPU = nullptr;
     segmentsInGPU = nullptr;
@@ -742,6 +741,7 @@ void SDL::Event::addHitToEvent(std::vector<float> x, std::vector<float> y, std::
     Idx const elementsPerThread(3u);
     Idx const numElements(nLowerModules);
     alpaka::vec::Vec<Dim, Idx> const extent(numElements);
+    DevAcc devAcc = alpaka::dev::getDev(queue);
 
     // Let alpaka calculate good block and grid sizes given our full problem extent
     alpaka::workdiv::WorkDivMembers<Dim, Idx> const workDiv(

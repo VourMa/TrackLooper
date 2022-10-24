@@ -47,7 +47,6 @@ namespace SDL
     {
     private:
         cudaStream_t stream;
-        DevAcc devAcc;
         QueueAcc queue;
         std::array<unsigned int, 6> n_hits_by_layer_barrel_;
         std::array<unsigned int, 5> n_hits_by_layer_endcap_;
@@ -93,7 +92,7 @@ namespace SDL
         int* superbinCPU;
         int8_t* pixelTypeCPU;
     public:
-        Event(cudaStream_t estream, QueueAcc& equeue);
+        Event(cudaStream_t estream, QueueAcc equeue);
         ~Event();
         void resetEvent();
 
